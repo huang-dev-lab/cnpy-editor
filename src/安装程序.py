@@ -40,11 +40,11 @@ def base_dir():
 
 
 def resource(*parts):
-    """定位资源文件：_MEIPASS → 脚本同目录 → 脚本上级 → 各层的 资源/ 子目录"""
+    """定位资源文件：_MEIPASS → 脚本同目录 → 脚本上级 → 各层的 assets/ 子目录"""
     here = os.path.dirname(os.path.abspath(__file__))
     root = os.path.normpath(os.path.join(here, ".."))
-    for d in (base_dir(), here, os.path.join(here, "资源"),
-              root, os.path.join(root, "资源")):
+    for d in (base_dir(), here, os.path.join(here, "assets"),
+              root, os.path.join(root, "assets")):
         p = os.path.join(d, *parts)
         if os.path.exists(p):
             return p

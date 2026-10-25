@@ -2,12 +2,10 @@
 
 
 a = Analysis(
-    ['E:/黄帅钧/编程/中文编辑器_python/源码/安装程序.py'],
+    ['E:/黄帅钧/编程/中文编辑器_python/src/中文编辑器.py'],
     pathex=[],
     binaries=[],
-    datas=[('E:/黄帅钧/编程/中文编辑器_python/dist/中文编辑器.exe', 'dist'),
-           ('E:/黄帅钧/编程/中文编辑器_python/资源/中文编辑器.ico', '.'),
-           ('E:/黄帅钧/编程/中文编辑器_python/源码/卸载中文编辑器.bat', '.')],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -24,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='中文编辑器安装程序',
+    name='中文编辑器',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -37,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['E:/黄帅钧/编程/中文编辑器_python/资源/中文编辑器.ico'],
+    icon=['E:/黄帅钧/编程/中文编辑器_python/assets/中文编辑器.ico'],
 )

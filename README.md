@@ -16,11 +16,11 @@
 
 ## 📸 实机演示
 
-![浅色界面](资源/screenshots/demo1-light.png)
+![浅色界面](assets/screenshots/demo1-light.png)
 
-![运行效果](资源/screenshots/demo2-run.png)
+![运行效果](assets/screenshots/demo2-run.png)
 
-![深色主题](资源/screenshots/demo3-dark.png)
+![深色主题](assets/screenshots/demo3-dark.png)
 
 ## 🚀 快速开始
 
@@ -38,7 +38,7 @@
 需要 Python 3.10+：
 
 ```bash
-python 源码/中文编辑器.py
+python src/中文编辑器.py
 ```
 
 ## 🛠️ 从源码构建 exe
@@ -47,8 +47,8 @@ python 源码/中文编辑器.py
 
 ```bash
 pip install pyinstaller
-pyinstaller --noconfirm 构建/中文编辑器.spec
-pyinstaller --noconfirm 构建/中文编辑器安装程序.spec
+pyinstaller --noconfirm specs/中文编辑器.spec
+pyinstaller --noconfirm specs/中文编辑器安装程序.spec
 ```
 
 产物在 `dist/` 目录。
@@ -57,10 +57,10 @@ pyinstaller --noconfirm 构建/中文编辑器安装程序.spec
 
 ```
 中文编辑器_python/
-├── 源码/       # 代码：主程序、安装程序、卸载脚本
-├── 资源/       # 图标（.ico / .png）
-├── 构建/       # PyInstaller 打包配置（.spec）
-├── 工具/       # 辅助脚本（文件关联、快速启动）
+├── src/        # 代码：主程序、安装程序、卸载脚本
+├── assets/     # 图标（.ico / .png）与演示截图（screenshots/）
+├── specs/      # PyInstaller 打包配置（.spec）
+├── tools/      # 辅助脚本（文件关联、快速启动）
 └── dist/       # 打包产物（exe）
 ```
 

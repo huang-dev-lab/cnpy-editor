@@ -24,7 +24,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 APP_NAME = "中文编辑器"
-APP_VERSION = "1.4"
+APP_VERSION = "1.0"
 PROG_ID = "CNEditor.cnpy"
 DEFAULT_DEST = os.path.join(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),

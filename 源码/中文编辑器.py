@@ -29,10 +29,11 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
 APP_TITLE = "中文编辑器"
-APP_VERSION = "1.4"
+APP_VERSION = "1.0"
 DEFAULT_SIZE = (1180, 780)      # 默认窗口大小
 MIN_SIZE = (760, 480)           # 窗口最小尺寸
 FONT_FAMILY = "Microsoft YaHei"  # 微软雅黑，中文显示效果较好
@@ -50,6 +51,28 @@ HL_COLOR = {
     "hl_comment": "#8a8a8a",   # 注释：灰
     "hl_number": "#d35400",    # 数字：橙
     "hl_funcname": "#2c7da0",  # 函数名 / 类名：青
+}
+
+# ---- 主题（浅色 / 深色）----
+THEMES = {
+    "浅色": {
+        "editor_bg": "#ffffff", "editor_fg": "#1a1a1a",
+        "line_bg": "#f4f4f4", "line_fg": "#8a8a8a",
+        "status_bg": "#e6e6e6", "status_fg": "#333333",
+        "root_bg": "#f0f0f0",
+        "hl": dict(HL_COLOR),
+    },
+    "深色": {  # 参考 VSCode Dark+ 配色
+        "editor_bg": "#1e1e1e", "editor_fg": "#d4d4d4",
+        "line_bg": "#252526", "line_fg": "#858585",
+        "status_bg": "#2d2d2d", "status_fg": "#cccccc",
+        "root_bg": "#252526",
+        "hl": {
+            "hl_kw": "#569cd6", "hl_builtin": "#c586c0",
+            "hl_string": "#ce9178", "hl_comment": "#6a9955",
+            "hl_number": "#b5cea8", "hl_funcname": "#4ec9b0",
+        },
+    },
 }
 
 # 关键字与内置函数表（都是 Python 常用词）
@@ -191,6 +214,10 @@ class ChineseEditor:
         self._member_cache = None    # 模块成员缓存
         self._just_inserted = False  # 刚通过补全插入模块名（抑制 KeyRelease 重弹）
 
+        # ---- 主题（浅色 / 深色）----
+        self._theme_name = "浅色"
+        self._theme = THEMES["浅色"]
+
         # ---- 窗口基本设置 ----
         self.root.title(APP_TITLE)
         self.root.geometry(f"{DEFAULT_SIZE[0]}x{DEFAULT_SIZE[1]}")
@@ -209,6 +236,9 @@ class ChineseEditor:
 
         # 新建一个空文档作为初始状态
         self.new_file(ask_save=False)
+
+        # 按当前主题上色（浅色默认；深色切换后立即生效）
+        self.apply_theme()
 
     # ==================================================================
     # 界面搭建
@@ -295,16 +325,30 @@ class ChineseEditor:
         view_menu.add_command(label="放大字号", accelerator="Ctrl+=", command=self.zoom_in)
         view_menu.add_command(label="缩小字号", accelerator="Ctrl+-", command=self.zoom_out)
         view_menu.add_command(label="恢复默认字号", command=self.zoom_reset)
+        # 主题切换子菜单
+        theme_menu = tk.Menu(menubar, tearoff=0)
+        self._theme_var = tk.StringVar(value=self._theme_name)
+        theme_menu.add_radiobutton(label="浅色", variable=self._theme_var, value="浅色",
+                                   command=lambda: self.switch_theme("浅色"))
+        theme_menu.add_radiobutton(label="深色", variable=self._theme_var, value="深色",
+                                   command=lambda: self.switch_theme("深色"))
+        view_menu.add_cascade(label="主题", menu=theme_menu)
         menubar.add_cascade(label="视图(V)", menu=view_menu)
 
         # ---- 帮助菜单 ----
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="关于", command=self.show_about)
+        help_menu.add_command(label="联系我们", command=self.show_contact)
         menubar.add_cascade(label="帮助(H)", menu=help_menu)
+
+        # 记录菜单引用，便于主题切换时尝试着色（Windows 原生菜单栏不一定生效）
+        self._menubar = menubar
+        self._menus = [file_menu, edit_menu, find_menu, run_menu, tmpl_menu,
+                       fmt_menu, view_menu, theme_menu, help_menu]
 
     def _create_toolbar(self):
         """创建工具栏（常用功能的快捷按钮）"""
-        bar = ttk.Frame(self.root, padding=(6, 4))
+        bar = ttk.Frame(self.root, padding=(6, 4), style="Toolbar.TFrame")
         bar.pack(side=tk.TOP, fill=tk.X)
 
         def add_button(text, cmd):
@@ -359,7 +403,8 @@ class ChineseEditor:
         # Modified 覆盖删除、撤销、粘贴、程序性修改等所有内容变化路径）
         self.text.bind("<KeyRelease>", self._on_content_change)
         self.text.bind("<<Modified>>", self._on_content_change)
-        self.text.bind("<KeyRelease>", self._maybe_show_suggestions)
+        # add="+" 追加，避免覆盖上面的状态栏刷新（bind 同一事件默认只保留最后一个）
+        self.text.bind("<KeyRelease>", self._maybe_show_suggestions, add="+")
         self.text.bind("<ButtonRelease-1>", self._on_cursor_move)
         self.text.bind("<Configure>", lambda e: self._redraw_line_numbers())
         self.line_canvas.bind("<MouseWheel>", self._on_line_canvas_wheel)
@@ -765,10 +810,93 @@ class ChineseEditor:
             linenum = str(i).split(".")[0]
             self.line_canvas.create_text(
                 width - 12, y, anchor="ne",
-                text=linenum, fill="#8a8a8a",
+                text=linenum, fill=self._theme["line_fg"],
                 font=(FONT_FAMILY, max(self.font_size - 2, 8)),
             )
             i = self.text.index(f"{i}+1line")
+
+    # ----------------------------------------------------------------
+    # 主题切换（浅色 / 深色）
+    # ----------------------------------------------------------------
+    def switch_theme(self, name):
+        """切换主题并立即应用"""
+        self._theme_name = name
+        self._theme = THEMES[name]
+        self._theme_var.set(name)
+        self.apply_theme()
+
+    def apply_theme(self):
+        """把当前主题的颜色应用到界面各区域（含 ttk 按钮/标签页/滚动条）"""
+        th = self._theme
+        dark = self._theme_name == "深色"
+        try:
+            # ttk 样式（clam 主题支持自定义颜色，让按钮/标签页/滚动条一起变深）
+            if not hasattr(self, "_style"):
+                self._style = ttk.Style(self.root)
+                try:
+                    self._style.theme_use("clam")
+                except Exception:
+                    pass
+            if dark:
+                sbg, sfg = th["status_bg"], th["status_fg"]
+                act = "#3c3c3c"
+            else:
+                sbg, sfg = "#f0f0f0", "#1a1a1a"
+                act = "#dcdcdc"
+            s = self._style
+            s.configure("TButton", background=sbg, foreground=sfg,
+                        bordercolor=th["line_bg"])
+            s.map("TButton",
+                  background=[("active", act)],
+                  foreground=[("active", "#ffffff" if dark else "#000000")])
+            s.configure("TMenubutton", background=sbg, foreground=sfg,
+                        bordercolor=th["line_bg"])
+            s.map("TMenubutton", background=[("active", act)],
+                  foreground=[("active", "#ffffff" if dark else "#000000")])
+            s.configure("Toolbar.TFrame", background=sbg)
+            s.configure("TNotebook", background=th["root_bg"],
+                        bordercolor=th["line_bg"])
+            s.configure("TNotebook.Tab", background=th["line_bg"], foreground=sfg,
+                        bordercolor=th["line_bg"])
+            s.map("TNotebook.Tab",
+                  background=[("selected", th["status_bg"])],
+                  foreground=[("selected", "#ffffff" if dark else "#000000")])
+            s.configure("Vertical.TScrollbar", background=th["line_bg"],
+                        bordercolor=th["line_bg"], troughcolor=th["root_bg"],
+                        arrowcolor=sfg)
+            s.configure("Horizontal.TScrollbar", background=th["line_bg"],
+                        bordercolor=th["line_bg"], troughcolor=th["root_bg"],
+                        arrowcolor=sfg)
+            s.configure("TSeparator", background=th["line_bg"])
+
+            # 主窗口与内容区
+            self.root.configure(bg=th["root_bg"])
+            # 编辑区
+            self.text.config(bg=th["editor_bg"], fg=th["editor_fg"],
+                             insertbackground=th["editor_fg"])
+            # 行号画布
+            self.line_canvas.config(bg=th["line_bg"])
+            # 状态栏
+            self.statusbar.config(bg=th["status_bg"])
+            for w in (self.pos_label, self.count_label, self.enc_label, self.mod_label):
+                w.config(bg=th["status_bg"], fg=th["status_fg"])
+            # 语法高亮 tag 颜色（已标记的文本会自动跟着变色）
+            for tag, color in th["hl"].items():
+                self.text.tag_configure(tag, foreground=color)
+            self.text.tag_lower("hl_comment")
+            # 菜单下拉项着色（菜单栏本身是 Windows 原生绘制，改不了；下拉项可以）
+            for m in getattr(self, "_menus", []):
+                try:
+                    m.config(bg=th["status_bg"], fg=sfg,
+                             activebackground=act,
+                             activeforeground="#ffffff" if dark else "#000000",
+                             bd=0, relief="flat")
+                except Exception:
+                    pass
+            # 行号文字颜色变了，重绘一次
+            self._redraw_line_numbers()
+        except Exception:
+            pass
 
     def _update_status(self):
         """更新字数统计与编码显示"""
@@ -807,7 +935,7 @@ class ChineseEditor:
     # ==================================================================
     def _configure_highlight_tags(self):
         """配置高亮配色。只设置颜色、不设置字体，避免与字号缩放冲突。"""
-        for tag, color in HL_COLOR.items():
+        for tag, color in self._theme["hl"].items():
             self.text.tag_configure(tag, foreground=color)
         # 让字符串的优先级高于注释：字符串里的 # 保持绿色，不会被误标成注释
         self.text.tag_lower("hl_comment")
@@ -822,7 +950,7 @@ class ChineseEditor:
         """真正执行高亮：先精确扫描字符串/注释，再对代码区着色"""
         self._hl_after = None
         text = self.text
-        for tag in HL_COLOR:
+        for tag in self._theme["hl"]:
             text.tag_remove(tag, "1.0", tk.END)
 
         content = text.get("1.0", "end-1c")
@@ -1698,6 +1826,42 @@ class ChineseEditor:
             "（打印 也仍然可用，新旧写法都支持）\n"
             "支持编码：UTF-8、GBK（打开时自动识别）",
         )
+
+    def show_contact(self):
+        """帮助 → 联系我们：显示 B 站主页与邮箱，可一键打开 / 复制"""
+        dlg = tk.Toplevel(self.root)
+        dlg.title("联系我们")
+        dlg.geometry("480x240")
+        dlg.resizable(False, False)
+        dlg.configure(bg=self._theme["root_bg"])
+        dlg.transient(self.root)
+
+        tk.Label(dlg, text="联系我们", font=(FONT_FAMILY, 16, "bold"),
+                 bg=self._theme["root_bg"], fg=self._theme["status_fg"]
+                 if self._theme_name == "浅色" else "#9cdcfe").pack(pady=(18, 8))
+
+        tk.Label(dlg, text="B 站主页：space.bilibili.com/1557100135",
+                 font=(FONT_FAMILY, 11),
+                 bg=self._theme["root_bg"], fg=self._theme["editor_fg"]).pack(pady=3)
+        tk.Label(dlg, text="邮箱：huang_dev_lab@163.com",
+                 font=(FONT_FAMILY, 11),
+                 bg=self._theme["root_bg"], fg=self._theme["editor_fg"]).pack(pady=3)
+        tk.Label(dlg, text="（遇到问题欢迎留言，一起玩中文编程～）",
+                 font=(FONT_FAMILY, 9),
+                 bg=self._theme["root_bg"],
+                 fg=self._theme["line_fg"]).pack(pady=(6, 10))
+
+        row = tk.Frame(dlg, bg=self._theme["root_bg"])
+        row.pack(pady=6)
+        tk.Button(row, text="打开 B 站主页", command=lambda: webbrowser.open(
+            "https://space.bilibili.com/1557100135"),
+            font=(FONT_FAMILY, 10)).pack(side=tk.LEFT, padx=5)
+        tk.Button(row, text="复制邮箱", command=lambda: (
+            dlg.clipboard_clear(), dlg.clipboard_append("huang_dev_lab@163.com"),
+            messagebox.showinfo("已复制", "邮箱已复制到剪贴板：huang_dev_lab@163.com")),
+            font=(FONT_FAMILY, 10)).pack(side=tk.LEFT, padx=5)
+        tk.Button(row, text="关闭", command=dlg.destroy,
+                  font=(FONT_FAMILY, 10)).pack(side=tk.LEFT, padx=5)
 
 
 def main():

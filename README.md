@@ -16,11 +16,11 @@
 
 ## 📸 实机演示
 
-![浅色界面](资源/截图/演示1-浅色界面.png)
+![浅色界面](资源/screenshots/demo1-light.png)
 
-![运行效果](资源/截图/演示2-运行效果.png)
+![运行效果](资源/screenshots/demo2-run.png)
 
-![深色主题](资源/截图/演示3-深色主题.png)
+![深色主题](资源/screenshots/demo3-dark.png)
 
 ## 🚀 快速开始
 

@@ -16,11 +16,11 @@
 
 ## 📸 实机演示
 
-![浅色界面](assets/screenshots/demo1-light.png)
+![浅色界面](https://raw.githubusercontent.com/huang-dev-lab/cnpy-editor/main/assets/screenshots/demo1-light.png)
 
-![运行效果](assets/screenshots/demo2-run.png)
+![运行效果](https://raw.githubusercontent.com/huang-dev-lab/cnpy-editor/main/assets/screenshots/demo2-run.png)
 
-![深色主题](assets/screenshots/demo3-dark.png)
+![深色主题](https://raw.githubusercontent.com/huang-dev-lab/cnpy-editor/main/assets/screenshots/demo3-dark.png)
 
 ## 🚀 快速开始
 

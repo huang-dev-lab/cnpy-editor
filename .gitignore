@@ -1,0 +1,14 @@
+# 私有内容：不参与开源
+红色历史博物馆/
+
+# PyInstaller 构建产物
+build/
+dist/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 日志等临时文件
+*.log

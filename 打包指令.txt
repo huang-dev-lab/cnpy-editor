@@ -1,0 +1,2 @@
+pyinstaller --noconfirm 构建\中文编辑器安装程序.spec
+pyinstaller --noconfirm 构建\中文编辑器.spec
